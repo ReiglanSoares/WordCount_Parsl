@@ -37,7 +37,6 @@ def generate_48GB_dataset(out_dir="inputs48GB"):
     for i in range(48):  
         path = os.path.join(out_dir, f"file_{i}.txt")
 
-        # Caso já esteja completo, pula
         if os.path.exists(path) and os.path.getsize(path) >= 1024 * 1024 * 1024:
             print(f"[SKIP] {path} já completo (~1GB)")
             continue
