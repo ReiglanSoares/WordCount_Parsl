@@ -16,10 +16,12 @@ def tree_reduce_bucket(bucket_files, bucket_id):
         for r in range(0, L, 2*n):
             if r + n < L:
                 out_file = f"intermediate/reduce_bucket_{bucket_id}_{r}_{r+n}.txt"
-                tasks[r] = reduce_bucket(tasks[r], tasks[r+n], out_file)
+                f1, d1 = tasks[r]
+                f2, d2 = tasks[r + n]
+                tasks[r] = (reduce_bucket(f1, f2, out_file, d1, d2), None)
         n *= 2
 
-    return tasks[0]
+    return tasks[0][0]
 
 def run(files, output_file, B):
 
@@ -29,21 +31,21 @@ def run(files, output_file, B):
     bucket_lists = [[] for _ in range(B)]
 
     for idx, f in enumerate(files):
-        future_list = wordcount_bucketed(f, "intermediate", B, idx)
+        done = wordcount_bucketed(f, "intermediate", B, idx)
 
         for b in range(B):
-            bucket_lists[b].append(future_list[b])
-
+            path = f"intermediate/map_{idx}_bucket_{b}.txt"
+            bucket_lists[b].append((path, done))
     final_bucket_files = []
 
     for b in range(B):
         print(f"[INFO] Reduzindo bucket {b}/{B-1} com {len(bucket_lists[b])} arquivos...")
         final_future = tree_reduce_bucket(bucket_lists[b], b)
         final_bucket_files.append(final_future)
-      final_paths = [f.result() for f in final_bucket_files]
 
+    final_paths = [f.result() for f in final_bucket_files]
     out_final = os.path.join("outputs", output_file)
-
+    
     with open(out_final, "w") as fout:
         for fpath in final_paths:
             with open(fpath, "r") as f:
@@ -51,10 +53,10 @@ def run(files, output_file, B):
                     fout.write(line)
 
     print("\n[OK] Resultado final salvo em:", out_final)
-    print("[INFO] Limpando arquivos intermediários...")
-    shutil.rmtree("intermediate")
 
-    print("[OK] Intermediários removidos.")
+    #print("[INFO] Limpando arquivos intermediários...")
+    #shutil.rmtree("intermediate")
+    #print("[OK] Intermediários removidos.")
 
 if __name__ == "__main__":
 
@@ -79,3 +81,5 @@ if __name__ == "__main__":
     print(f"[INFO] {len(files)} arquivos detectados.")
 
     run(files, args.output, args.buckets)
+
+    parsl.dfk().cleanup()
